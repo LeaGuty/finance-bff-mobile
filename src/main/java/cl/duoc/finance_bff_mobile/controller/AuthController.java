@@ -13,6 +13,21 @@ import org.springframework.web.bind.annotation.RestController;
 
 import cl.duoc.finance_bff_mobile.security.JwtUtil;
 
+/**
+ * Controlador REST de autenticación.
+ *
+ * Expone el endpoint público POST /auth/login que permite a los clientes
+ * móviles autenticarse con usuario y contraseña, y recibir un token JWT
+ * firmado para acceder a los endpoints protegidos del BFF.
+ *
+ * Flujo de autenticación:
+ *   1. El cliente envía credenciales en JSON (username + password)
+ *   2. Spring Security valida contra el almacén de usuarios (InMemory)
+ *   3. Si es válido, se genera un token JWT con el rol del usuario
+ *   4. Se retorna el token al cliente para uso en peticiones posteriores
+ *
+ * @author Equipo Backend 3 - Duoc UC
+ */
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -23,51 +38,59 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    /**
+     * Endpoint de login que autentica al usuario y genera un token JWT.
+     *
+     * @param request JSON con campos "username" y "password"
+     * @return 200 OK con el token JWT si las credenciales son válidas,
+     *         401 UNAUTHORIZED si las credenciales son incorrectas
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
-            // 1. Validar usuario y contraseña con Spring Security
-            // Esto buscará en la configuración "InMemory" que definimos en SecurityConfig
+            // Validar credenciales contra el UserDetailsService configurado en SecurityConfig
             Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
 
-            // 2. Si la autenticación es exitosa, obtenemos el rol del usuario
-            // (Asumimos que tiene al menos un rol)
+            // Obtener el primer rol/authority del usuario autenticado
             String role = auth.getAuthorities().iterator().next().getAuthority();
 
-            // 3. Generamos el Token JWT firmado
+            // Generar token JWT firmado con HS512, incluyendo el rol como claim
             String token = jwtUtil.generateToken(request.getUsername(), role);
 
-            // 4. Devolvemos el token al cliente
             return ResponseEntity.ok(new LoginResponse(token));
 
         } catch (AuthenticationException e) {
-            // Si el usuario o contraseña están mal
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Error: Credenciales inválidas");
         }
     }
 
-    // --- CLASES DTO AUXILIARES (Para recibir y enviar datos) ---
-    
-    // Para recibir el JSON: { "username": "...", "password": "..." }
+    // ========================== DTOs internos ==========================
+
+    /**
+     * DTO para deserializar el body del request de login.
+     * Espera JSON: { "username": "...", "password": "..." }
+     */
     public static class LoginRequest {
         private String username;
         private String password;
 
-        // Getters y Setters necesarios
         public String getUsername() { return username; }
         public void setUsername(String username) { this.username = username; }
         public String getPassword() { return password; }
         public void setPassword(String password) { this.password = password; }
     }
 
-    // Para responder el JSON: { "token": "eyJhbG..." }
+    /**
+     * DTO para la respuesta de login exitoso.
+     * Retorna JSON: { "token": "eyJhbG..." }
+     */
     public static class LoginResponse {
         private String token;
 
         public LoginResponse(String token) { this.token = token; }
-        
+
         public String getToken() { return token; }
         public void setToken(String token) { this.token = token; }
     }
