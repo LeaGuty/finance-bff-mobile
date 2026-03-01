@@ -1,4 +1,5 @@
 package cl.duoc.finance_bff_mobile.config;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,11 +22,12 @@ import cl.duoc.finance_bff_mobile.security.JwtFilter;
  * y la integración del filtro JWT en la cadena de seguridad de Spring.
  *
  * Reglas de acceso:
- * - POST /auth/login         -> Público (sin autenticación)
- * - GET  /bff/mobile/v1/**   -> Requiere rol CLIENTE_MOVIL
- * - Cualquier otro endpoint  -> Requiere autenticación
+ * - POST /auth/login -> Público (sin autenticación)
+ * - GET /bff/mobile/v1/** -> Requiere rol CLIENTE_MOVIL
+ * - Cualquier otro endpoint -> Requiere autenticación
  *
- * Nota: Se utiliza un almacén de usuarios en memoria (InMemoryUserDetailsManager)
+ * Nota: Se utiliza un almacén de usuarios en memoria
+ * (InMemoryUserDetailsManager)
  * con fines de desarrollo/evaluación. En producción se reemplazaría por una
  * fuente de datos persistente (base de datos, LDAP, etc.).
  *
@@ -38,27 +40,29 @@ public class SecurityConfig {
     /**
      * Configura la cadena de filtros de seguridad HTTP.
      *
-     * - CSRF deshabilitado: al ser una API stateless con JWT, no se necesitan tokens CSRF.
-     * - Sesiones STATELESS: cada petición se autentica de forma independiente vía JWT.
+     * - CSRF deshabilitado: al ser una API stateless con JWT, no se necesitan
+     * tokens CSRF.
+     * - Sesiones STATELESS: cada petición se autentica de forma independiente vía
+     * JWT.
      * - JwtFilter se ejecuta antes del filtro estándar de usuario/contraseña para
-     *   interceptar y validar el token Bearer en cada request protegido.
+     * interceptar y validar el token Bearer en cada request protegido.
      *
      * @param http      configurador de seguridad HTTP de Spring
-     * @param jwtFilter filtro personalizado para validar tokens JWT (inyectado por parámetro
+     * @param jwtFilter filtro personalizado para validar tokens JWT (inyectado por
+     *                  parámetro
      *                  para evitar dependencia circular con UserDetailsService)
      * @return cadena de filtros de seguridad construida
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/login").permitAll()
-                .requestMatchers("/bff/mobile/v1/**").hasRole("CLIENTE_MOVIL")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**", "/public/**").permitAll()
+                        .anyRequest().authenticated())
+                .oauth2Login(org.springframework.security.config.Customizer.withDefaults());
+
+        // .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -79,10 +83,10 @@ public class SecurityConfig {
     @Bean
     public InMemoryUserDetailsManager userDetailsService() {
         UserDetails user = User.withDefaultPasswordEncoder()
-            .username("usuario_movil")
-            .password("5678")
-            .roles("CLIENTE_MOVIL")
-            .build();
+                .username("usuario_movil")
+                .password("5678")
+                .roles("CLIENTE_MOVIL")
+                .build();
         return new InMemoryUserDetailsManager(user);
     }
 

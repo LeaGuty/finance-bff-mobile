@@ -28,7 +28,8 @@ import java.util.stream.Collectors;
  * y transforma las respuestas en DTOs livianos optimizados para la app móvil.
  *
  * Responsabilidades clave:
- * - Propagar el token JWT de la petición entrante hacia el backend (token forwarding)
+ * - Propagar el token JWT de la petición entrante hacia el backend (token
+ * forwarding)
  * - Consultar datos de cuenta y transacciones desde el backend
  * - Aplicar lógica de negocio: filtrar solo los últimos 5 movimientos
  * - Manejar errores del backend con mensajes amigables para el usuario
@@ -40,6 +41,9 @@ public class FinanceMobileServiceImpl implements FinanceMobileService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private cl.duoc.finance_bff_mobile.security.JwtUtil jwtUtil;
 
     // URL base del backend principal (API REST)
     private final String BACKEND_URL = "http://localhost:8080/api/v1";
@@ -55,13 +59,28 @@ public class FinanceMobileServiceImpl implements FinanceMobileService {
      */
     private HttpHeaders getHeadersConToken() {
         HttpHeaders headers = new HttpHeaders();
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes != null) {
-            String authHeader = attributes.getRequest().getHeader("Authorization");
-            if (authHeader != null) {
-                headers.set("Authorization", authHeader);
-            }
+
+        try {
+            // 1. Obtener el usuario autenticado con GitHub desde el contexto de seguridad
+            org.springframework.security.oauth2.core.user.OAuth2User oauthUser = (org.springframework.security.oauth2.core.user.OAuth2User) org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication().getPrincipal();
+
+            // 2. Extraer el nombre de usuario de GitHub para log o trazabilidad (opcional)
+            String githubUser = oauthUser.getAttribute("login");
+
+            // 3. Generar el JWT para el backend.
+            // Mapeamos a "usuario_movil" porque el microservicio finance-batch utiliza
+            // un InMemoryUserDetailsManager que solo conoce este usuario para el rol móvil.
+            String usernameInternoBff = "usuario_movil";
+            String tokenInterno = jwtUtil.generateToken(usernameInternoBff, "ROLE_CLIENTE_MOVIL");
+
+            // 4. Inyectarlo en el Header con el prefijo Bearer
+            headers.set("Authorization", "Bearer " + tokenInterno);
+
+        } catch (Exception e) {
+            System.err.println("Error generando el token relay para el Core: " + e.getMessage());
         }
+
         return headers;
     }
 
@@ -69,8 +88,8 @@ public class FinanceMobileServiceImpl implements FinanceMobileService {
      * {@inheritDoc}
      *
      * Realiza dos llamadas al backend:
-     *   1. GET /api/v1/cuentas/{id}                -> datos de la cuenta
-     *   2. GET /api/v1/cuentas/{id}/transacciones   -> lista de movimientos
+     * 1. GET /api/v1/cuentas/{id} -> datos de la cuenta
+     * 2. GET /api/v1/cuentas/{id}/transacciones -> lista de movimientos
      *
      * Luego aplica lógica BFF: ordena movimientos por fecha descendente
      * y retorna solo los 5 más recientes junto con un saludo personalizado.
@@ -86,31 +105,31 @@ public class FinanceMobileServiceImpl implements FinanceMobileService {
             // Llamada 1: Obtener datos básicos de la cuenta
             String urlCuenta = BACKEND_URL + "/cuentas/" + id;
             ResponseEntity<CuentaLiteDTO> responseCuenta = restTemplate.exchange(
-                urlCuenta,
-                HttpMethod.GET,
-                entity,
-                CuentaLiteDTO.class
-            );
+                    urlCuenta,
+                    HttpMethod.GET,
+                    entity,
+                    CuentaLiteDTO.class);
             CuentaLiteDTO cuenta = responseCuenta.getBody();
             resumen.setCuenta(cuenta);
 
             // Llamada 2: Obtener todas las transacciones de la cuenta
             String urlMovimientos = BACKEND_URL + "/cuentas/" + id + "/transacciones";
             ResponseEntity<List<MovimientoLiteDTO>> response = restTemplate.exchange(
-                urlMovimientos,
-                HttpMethod.GET,
-                entity,
-                new ParameterizedTypeReference<List<MovimientoLiteDTO>>() {}
-            );
+                    urlMovimientos,
+                    HttpMethod.GET,
+                    entity,
+                    new ParameterizedTypeReference<List<MovimientoLiteDTO>>() {
+                    });
 
             List<MovimientoLiteDTO> todosLosMovimientos = response.getBody();
 
-            // Lógica BFF: filtrar solo los últimos 5 movimientos (orden descendente por fecha)
+            // Lógica BFF: filtrar solo los últimos 5 movimientos (orden descendente por
+            // fecha)
             if (todosLosMovimientos != null) {
                 List<MovimientoLiteDTO> ultimos5 = todosLosMovimientos.stream()
-                    .sorted(Comparator.comparing(MovimientoLiteDTO::getFecha).reversed())
-                    .limit(5)
-                    .collect(Collectors.toList());
+                        .sorted(Comparator.comparing(MovimientoLiteDTO::getFecha).reversed())
+                        .limit(5)
+                        .collect(Collectors.toList());
 
                 resumen.setUltimosMovimientos(ultimos5);
             } else {

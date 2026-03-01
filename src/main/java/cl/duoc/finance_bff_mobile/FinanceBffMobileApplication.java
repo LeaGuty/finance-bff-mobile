@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
  * Clase principal del microservicio BFF (Backend For Frontend) Mobile.
@@ -14,14 +15,22 @@ import org.springframework.web.client.RestTemplate;
  * del backend para optimizar el consumo de datos en dispositivos móviles.
  *
  * Flujo general:
- *   Cliente Móvil --> BFF Mobile (puerto 8082/HTTPS) --> Backend API REST (puerto 8080)
+ * Cliente Móvil --> BFF Mobile (puerto 8082/HTTPS) --> Backend API REST (puerto
+ * 8080)
  *
  * @author Equipo Backend 3 - Duoc UC
  */
 @SpringBootApplication
+@EnableDiscoveryClient
 public class FinanceBffMobileApplication {
 
     public static void main(String[] args) {
+        // Cargar variables del .env en el sistema para que Spring Boot (ej: OAuth2) las
+        // detecte
+        io.github.cdimascio.dotenv.Dotenv dotenv = io.github.cdimascio.dotenv.Dotenv.configure().ignoreIfMissing()
+                .load();
+        dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
+
         SpringApplication.run(FinanceBffMobileApplication.class, args);
     }
 

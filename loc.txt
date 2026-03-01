@@ -1,0 +1,12 @@
+HTTP/1.1 302 
+Set-Cookie: JSESSIONID=149BC25B3543E4069C2755BD70347573; Path=/; Secure; HttpOnly
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+Strict-Transport-Security: max-age=31536000 ; includeSubDomains
+X-Frame-Options: DENY
+Location: https://github.com/login/oauth/authorize?response_type=code&client_id=$%7BGITHUB_CLIENT_ID%7D&scope=read:user&state=emqCeVA2XtFcAJx_-0_5iDHxntOam_77n_CtQCr6C1Y%3D&redirect_uri=https://localhost:8082/login/oauth2/code/github&code_challenge=xjlQu12M1yCgSu-wWFNMAAy-9n7OJArwFHmjIaI5Vnk&code_challenge_method=S256
+Date: Sat, 28 Feb 2026 18:13:27 GMT
+
