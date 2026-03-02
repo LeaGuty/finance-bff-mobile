@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,7 +29,8 @@ public class FinanceMobileServiceImpl implements FinanceMobileService {
     @Autowired
     private cl.duoc.finance_bff_mobile.security.JwtUtil jwtUtil;
 
-    private final String BACKEND_URL = "http://localhost:8080/api/v1";
+    @Value("${backend.url:http://localhost:8080/api/v1}")
+    private String BACKEND_URL; 
 
     private HttpHeaders getHeadersConToken() {
         HttpHeaders headers = new HttpHeaders();
